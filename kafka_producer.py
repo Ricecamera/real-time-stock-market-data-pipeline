@@ -1,30 +1,44 @@
 import time
-from kafka import KafkaProducer
-import yfinance as yf
-from datetime import date
 import json
+import schedule
+import yfinance as yf
+from kafka import KafkaProducer
 
-tesla = yf.Ticker("TSLA")
-topic_name = 'stock_demo'
+from helper import is_market_open
 
+# Kafka configuration
+bootstrap_server = 'localhost:9092'
+topic = 'stock_demo'
+
+# Create Kafka producer
 producer = KafkaProducer(
-            bootstrap_servers=['localhost:9092'],
+            bootstrap_servers=[bootstrap_server],
             value_serializer=lambda x:
            json.dumps(x).encode("utf-8"))
 
-while True:
-    data = tesla.history(period="1d", interval='2m')
+def extract_stock_data(ticker, interval):
+    if is_market_open():
+        stock = yf.Ticker(ticker)
+        data = stock.history(period='1d', interval=interval)
 
-    data = data.reset_index(drop=False)
-    data['Datetime'] = data['Datetime'].dt.strftime("%Y-%m-%d %H:%M:%S")
+        data = data.reset_index(drop=False)
+        # Convert timestamp to string
+        data['Datetime'] = data['Datetime'].dt.strftime('%Y-%m-%d %H:%M:%S')
+        my_dict = data.iloc[-1].to_dict()
+        # Send data to Kafka
+        producer.send(topic, key=bytes(ticker, 'utf-8'), value=my_dict)
+        producer.flush()
+        print(f"Producing to {topic}")
+    else:
+        print("Market is closed. No data available.")
 
-    # pick only the most recent stock data
-    my_dict = data.iloc[-1].to_dict()
+def run_scheduler(ticker, mins=1):
+    # schedule script to run every 1 minutes
+    interval = str(mins) + 'm'
+    schedule.every(mins).minutes.do(extract_stock_data, ticker=ticker, interval=interval)
+    while True:
+        schedule.run_pending()
+        time.sleep(5) # sleep for 1 seconds
 
-    producer.send(topic_name, key=b'Tesla Stock Update', value=my_dict)
-
-    print(f"Producing to {topic_name}")
-
-    producer.flush()
-
-    time.sleep(120)
+ticker_symbol = 'TSLA'
+run_scheduler(ticker_symbol)
