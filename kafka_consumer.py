@@ -1,14 +1,27 @@
+import argparse
+import json
+import helper
+from datetime import datetime
+from collections import deque
 from kafka import KafkaConsumer
 from s3fs import S3FileSystem
 
-from datetime import datetime
-from collections import deque
-import json
-import helper
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='Kafka Consumer')
+    parser.add_argument('bucket_name', help='Your s3 bucket name')
+    parser.add_argument('--bootstrap', default='localhost:9092')
+    parser.add_argument('--topic', help='topic channel of kafka broker', default='stock_demo')
+    args = parser.parse_args()
+    return args
+
+args = parse_args()
 
 # Kafka configuration
-bootstrap_server = 'localhost:9092'
-topic = 'stock_demo'
+bootstrap_server = args.bootstrap
+topic = args.topic
+bucket_name = args.bucket_name
 
 consumer = KafkaConsumer(
   topic,
@@ -44,8 +57,8 @@ def handle_message(message):
           skip = True
           
         # remove messages date that last more than 10 mins
-        last_10_dt = helper.get_last_10m_time()
-        while len(dq) != 0 and dq[0]['Date_object'] < last_10_dt:
+        last_hr_dt = helper.get_last_hr_time()
+        while len(dq) != 0 and dq[0]['Date_object'] < last_hr_dt:
           dq.popleft()
 
       if skip:
@@ -53,7 +66,7 @@ def handle_message(message):
       
       i = helper.get_running_number()
       data['stock_name'] = stock_name
-      with s3.open("s3://socket-market-data-sahatsarin/stock_market_{}.json".format(i), 'w') as file:
+      with s3.open("s3://{}/stock_market_{}.json".format(bucket_name, i), 'w') as file:
           json.dump(data, file)
 
       # update running_number and add new message
