@@ -9,8 +9,7 @@ def get_last_10m_time():
 
   # Calculate 10 minutes ago
   ten_minutes_ago = datetime.combine(current_datetime.date(), current_datetime.time()) - timedelta(minutes=10)
-  previous_time = ten_minutes_ago.time()
-  return previous_time
+  return ten_minutes_ago
 
 def is_market_open():
   current_time = datetime.now(eastern).time()
