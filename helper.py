@@ -4,11 +4,11 @@ from datetime import datetime, timedelta
 rn_file = open('running_number.txt', 'r+')
 eastern = pytz.timezone('US/Eastern')
 
-def get_last_10m_time():
+def get_last_hr_time():
   current_datetime = datetime.now(eastern)
 
   # Calculate 10 minutes ago
-  ten_minutes_ago = datetime.combine(current_datetime.date(), current_datetime.time()) - timedelta(minutes=10)
+  ten_minutes_ago = datetime.combine(current_datetime.date(), current_datetime.time()) - timedelta(hours=1)
   return ten_minutes_ago
 
 def is_market_open():
