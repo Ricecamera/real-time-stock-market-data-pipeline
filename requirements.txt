@@ -1,3 +1,4 @@
 kafka-python
 yfinance
 schedule
+boto3
